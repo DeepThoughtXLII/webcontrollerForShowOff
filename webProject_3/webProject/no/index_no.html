@@ -1,0 +1,598 @@
+<!doctype html>
+<!---------------------------------------------------------------------------------------------------------------------------------->
+<!------------------------------------------------- PREVENT ZOOOOOOMING ------------------------------------------------------------>
+<!---------------------------------------------------------------------------------------------------------------------------------->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<head>
+	<link rel="stylesheet" href="mystyle.css">
+</head>
+	
+<style>
+    /*textarea { vertical-align: bottom; }
+    #output { overflow: auto; }
+    #output > p { overflow-wrap: break-word; } 
+    */
+    #output span { color: blue; }
+    #output span.error { color: red; }
+
+
+	@media (orientation: landscape) {
+  	body {
+    flex-direction: column;
+  	}
+	}
+
+	body
+{
+  display: flex;
+     align-items: center;
+      justify-content: space-between;
+  font-family: Courier, monospaced;
+  font-size: 16px;
+  font-weight: bold;
+    margin: 0;
+  height: 100vh;
+    padding: 0;
+  background-color:grey;
+  }	
+  .row
+{
+display: inline-flex;
+clear: both;
+}
+div {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  }
+#color-joystick {
+  width: 100%;
+    height: 100%;
+    align-items: center;
+    border-radius: 100%;
+}
+.button {
+background-color: rgba(129, 179, 226, 0.675); /* Green */
+border: none;
+color: white;
+padding: 20px;
+text-align: center;
+display: inline-block;
+font-size: 16px;
+margin: 4px 2px;	
+}
+
+.button:active{
+  color:darkgray;
+  background-color: darkmagenta;
+  transform: translateY(2px);
+}
+
+.buttonShoot{
+object-fit: cover; 
+width: 75%;
+height:auto;
+border-radius: 50%;
+}
+.buttonAbility{
+object-fit: cover; 
+width: 75%;
+height:auto;
+border-radius: 12px;
+}
+.columnLateral
+{
+  float: left;
+  width: 15%;
+  min-width: 300px;
+}
+.columnCentral
+{
+  float: left;
+  width: 70%;
+  min-width: 300px;
+}
+
+html{
+  height:100%;
+}
+
+div#controller{
+  display: none;
+}
+
+div#playername{
+  display: block;
+  margin: 30px;
+}
+
+div#gameLeader{
+  max-width: 50%; 
+  height: auto;
+  margin:30px;
+  display: none;
+}
+</style>
+
+
+
+<!--
+<h2>WebSocket Test</h2>
+<textarea cols=60 rows=6></textarea>
+<button>send</button>
+
+
+<body>
+Joystick Controls.
+<hr>
+<div id="status1" style="color: red;">Joystick 1</div>
+
+
+display:flex; justify-content:space-between;
+
+
+<hr>
+-->
+
+
+
+<!---------------------------------------------------------------------------------------------------------------------------------->
+<!--------------------------------------------CONTROLLER---------------------------------------------------------->
+<!---------------------------------------------------------------------------------------------------------------------------------->
+<body>
+<div id="controller" class="row" style="width: 60%; height: 50%;">
+	<div class="columnLateral" id="joystick" style= "width: 100%; height: auto; margin-left: 50px">
+		<div style= "position: relative; ">
+		<img src="joystick-base.png" style="object-fit: cover; width: auto;"/>
+			<div id="stick1" style="position: absolute; top:25%; left:25%; width:50%; height:auto;transform-origin: center;">
+			<img src="joystick-blue.png" style="object-fit: cover; width: 75%; height:auto; margin: auto;"/>		
+			</div>
+		</div>
+	</div>
+
+	
+	<div class="columnLateral" id="buttons" style="max-width: 100%; height: auto; margin: 40px;">
+		<div>
+			<button id = "buttonShoot" class= "button buttonShoot" button type="button">SHOOT</button>
+		</div>
+	</div>
+
+	<div id="levelUp" class="columnCentral">
+		<p id="upgradeCount">upgrades = 0</p>
+		<button id="aHealth" class= "button buttonAbility">Health</button>
+		<button id="aAttack" class= "button buttonAbility">Attack</button>		
+		<button id="aSpeed" class= "button buttonAbility">Speed</button>				
+</div>
+</div>
+
+
+<!---------------------------------------------------------------------------------------------------------------------------------->
+<!-------------------------------------------------LOGIN WITH NAME SCREEN---------------------------------------------------------------->
+<!---------------------------------------------------------------------------------------------------------------------------------->
+
+<div id="playername">
+<textarea id="nametext" cols="30" rows="1">
+</textarea>
+<br>
+  <button type="submit" value="Submit" onclick="sendPlayerName()">Submit</button>
+<br>
+</div>
+
+
+<!---------------------------------------------------------------------------------------------------------------------------------->
+<!-------------------------------------------------GAME LEADER CAN START GAME WITH THIS SCREEN ---------------------------------------->
+<!---------------------------------------------------------------------------------------------------------------------------------->
+
+
+<div id="gameLeader">
+	<button type="button" onclick="startGame()">START GAME</button>
+</div>
+<div id=output></div>
+
+
+<!---------------------------------------------------------------------------------------------------------------------------------->
+<!-------------------------------------------------DISCONNECT INSTRUCTIONS ---------------------------------------->
+<!---------------------------------------------------------------------------------------------------------------------------------->
+
+<div id="disconnectIntructions">
+	<p>If you disconnect please refresh the screen and rejoin again with the same playername.</p>
+</div>
+
+
+
+
+<!---------------------------------------------------------------------------------------------------------------------------------->
+<!-------------------------------------------------PREVENT SCROLLING---------------------------------------------------------------->
+<!---------------------------------------------------------------------------------------------------------------------------------->
+
+
+<script>
+	document.body.addEventListener('touchmove', function(event) {
+	  event.preventDefault();
+	}, false); 
+	</script>
+<!---------------------------------------------------------------------------------------------------------------------------------->
+<!-------------------------------------------------WHAT FOLLOWS IS FUNCTIONALITY CODE | DO NOT TOUCH PLS------------------->
+<!---------------------------------------------------------------------------------------------------------------------------------->
+<script>class JoystickController
+{
+	//https://www.cssscript.com/touch-joystick-controller/
+	// stickID: ID of HTML element (representing joystick) that will be dragged
+	// maxDistance: maximum amount joystick can move in any direction
+	// deadzone: joystick must move at least this amount from origin to register value change
+	constructor( stickID, maxDistance, deadzone )
+	{
+		this.id = stickID;
+		let stick = document.getElementById(stickID);
+
+		let shootButton = document.getElementById('buttonShoot');
+		let healthButton = document.getElementById('aHealth');
+		let attackButton = document.getElementById('aAttack');
+		let speedButton = document.getElementById('aSpeed');
+
+		// location from which drag begins, used to calculate offsets
+		this.dragStart = null;
+
+		// track touch identifier in case multiple joysticks present
+		this.touchId = null;
+		
+		this.active = false;
+		this.value = { x: 0, y: 0 }; 
+
+		let self = this;
+
+		function handleDown(event)
+		{
+			console.log("touch down");
+		    self.active = true;
+
+			// all drag movements are instantaneous
+			stick.style.transition = '0s';
+
+			// touch event fired before mouse event; prevent redundant mouse event from firing
+			event.preventDefault();
+
+		    if (event.changedTouches)
+		    	self.dragStart = { x: event.changedTouches[0].clientX, y: event.changedTouches[0].clientY };
+		    else
+		    	self.dragStart = { x: event.clientX, y: event.clientY };
+
+			// if this is a touch event, keep track of which one
+		    if (event.changedTouches)
+		    	self.touchId = event.changedTouches[0].identifier;
+		}
+		
+		function handleMove(event) 
+		{
+		    if ( !self.active ) return;
+
+		    // if this is a touch event, make sure it is the right one
+		    // also handle multiple simultaneous touchmove events
+		    let touchmoveId = null;
+		    if (event.changedTouches)
+		    {
+		    	for (let i = 0; i < event.changedTouches.length; i++)
+		    	{
+		    		if (self.touchId == event.changedTouches[i].identifier)
+		    		{
+		    			touchmoveId = i;
+		    			event.clientX = event.changedTouches[i].clientX;
+		    			event.clientY = event.changedTouches[i].clientY;
+		    		}
+		    	}
+
+		    	if (touchmoveId == null) return;
+		    }
+
+		    const xDiff = event.clientX - self.dragStart.x;
+		    const yDiff = event.clientY - self.dragStart.y;
+		    const angle = Math.atan2(yDiff, xDiff);
+			const distance = Math.min(maxDistance, Math.hypot(xDiff, yDiff));
+			const xPosition = distance * Math.cos(angle);
+			const yPosition = distance * Math.sin(angle);
+
+			// move stick image to new position
+		    stick.style.transform = `translate3d(${xPosition}px, ${yPosition}px, 0px)`;
+
+			// deadzone adjustment
+			const distance2 = (distance < deadzone) ? 0 : maxDistance / (maxDistance - deadzone) * (distance - deadzone);
+		    const xPosition2 = distance2 * Math.cos(angle);
+			const yPosition2 = distance2 * Math.sin(angle);
+		    const xPercent = parseFloat((xPosition2 / maxDistance).toFixed(4));
+		    const yPercent = parseFloat((yPosition2 / maxDistance).toFixed(4));
+		    
+		    self.value = { x: xPercent, y: yPercent };
+		  }
+
+		function handleUp(event) 
+		{
+			console.log("touch up");
+		    if ( !self.active ) return;
+
+		    // if this is a touch event, make sure it is the right one
+		    if (event.changedTouches && self.touchId != event.changedTouches[0].identifier) return;
+
+		    // transition the joystick position back to center
+		    stick.style.transition = '.2s';
+		    stick.style.transform = `translate3d(0px, 0px, 0px)`;
+
+		    // reset everything
+		    self.value = { x: 0, y: 0 };
+		    self.touchId = null;
+		    self.active = false;
+		}
+
+
+
+		stick.addEventListener('mousedown', handleDown);
+		stick.addEventListener('touchstart', handleDown);
+		stick.addEventListener('touchend', zeroInput);
+		shootButton.addEventListener('touchend', shoot);
+		healthButton.addEventListener('touchend', HealthUpgradeChosen);
+		attackButton.addEventListener('touchend', AttackUpgradeChosen);
+		speedButton.addEventListener('touchend', SpeedUpgradeChosen);
+		document.addEventListener('mousemove', handleMove, {passive: false});
+		document.addEventListener('touchmove', handleMove, {passive: false});
+		document.addEventListener('mouseup', handleUp);
+		document.addEventListener('touchend', handleUp);
+	}
+}
+
+let joystick1 = new JoystickController("stick1", screen.width/10, 8);
+let oldJoystickValues = {x: 0, y:0};
+
+
+function update()
+{
+	//document.getElementById("status1").innerText = "Joystick 1: " + JSON.stringify(joystick1.value);
+    if(oldJoystickValues.x != joystick1.value.x && oldJoystickValues.y != joystick1.value.y){
+        doSend("$" + "newInput" + "$" + JSON.stringify(joystick1.value.x) + "!" + JSON.stringify(joystick1.value.y));
+        oldJoystickValues = jostick1.value;
+    }
+	
+}
+
+function zeroInput(){
+	doSend("$" + "newInput" + "$" + 0 + "!" + 0);			
+}
+
+function loop()
+{
+	requestAnimationFrame(loop);
+	update();
+}
+
+
+
+
+loop();
+
+	var origin = window.location.origin;
+	var words = origin.split(':'); // typically: words[0]= "http", words[1] = something like "//192.168.0.1", words[2] = "8000" (the http server port)	
+	var wsUri = "ws:"+words[1]+"/"; 
+	var gameLeader = false;
+	var hasName = false;
+	var inGame = false;
+	var upgradeAvailable = false;
+	var upgradeCount = 0;
+
+	var showingDisconnectInstructions = false;
+
+	let controller = document.getElementById("controller");
+	let playerNameDiv = document.getElementById("playername");
+	let levelUp = document.getElementById("levelUp");
+	let UpgradeCountNumber = document.getElementById("upgradeCount");
+	let gameLeaderDiv = document.getElementById("gameLeader");
+	let disconnectIntructions = document.getElementById("disconnectIntructions");
+
+    // http://www.websocket.org/echo.html
+
+    var button = document.querySelector("button"),
+        output = document.querySelector("#output"),
+        //textarea = document.querySelector("textarea"),
+        //wsUri = "ws://127.0.0.1/",    // works
+		//wsUri = "ws://192.168.2.8/",  // This works if this is the LAN address of the web socket server
+        websocket = new WebSocket(wsUri);
+
+   // button.addEventListener("click", onClickButton);
+
+    websocket.onopen = function (e) {
+        writeToScreen("CONNECTED");
+        doSend("client connected");
+		document.body.style.backgroundColor = 'blueviolet';	
+		//screenUpdate();
+		playerNameDiv.style.display = "block";
+		disconnectIntructions.style.display = "none";
+    };
+
+    websocket.onclose = function (e) {
+        writeToScreen("DISCONNECTED");
+		document.body.style.backgroundColor = 'red';
+		showingDisconnectInstructions = true;
+		inGame = false;
+		screenUpdate();
+    };
+
+    websocket.onmessage = function (e) {
+		if(e.data == "nameAccepted"){
+			hasName = true;
+			screenUpdate();
+		}
+        else if(e.data == "gameLeader"){
+			hasName = true;
+			gameLeader = true;
+			screenUpdate();
+		}
+		else if(e.data == "gameStart"){
+			inGame = true;
+			screenUpdate();
+		}
+		else if(e.data == "upgrade"){
+			upgradeAvailable = true;
+			upgradeCount++;
+			//var p = document.getElementById("upgradeCount").innerText = upgradeCount;
+			UpgradeCountNumber.innerText = upgradeCount;
+			screenUpdate();
+		}
+		else if(e.data != ""){
+			writeToScreen("<span>RESPONSE: " + e.data + "</span>");
+		}		
+    };
+
+    websocket.onerror = function (e) {
+        writeToScreen("<span class=error>ERROR:</span> " + e.data);
+    };
+
+    function doSend(value) {
+        //writeToScreen("SENT: " + value);
+        websocket.send(value);
+    }
+
+    function writeToScreen(message) {
+        output.insertAdjacentHTML("afterbegin", "<p>" + message + "</p>");
+    }
+
+	function sendPlayerName(){
+		var name = document.getElementById("nametext").value;
+		websocket.send("playerName"+"!"+name);
+	}
+
+	function screenUpdate(){
+		hideScreens();
+		/*if(inGame)
+		{
+			gameLeader = false;
+			//var controller = document.getElementById("controller");			
+  			controller.style.display = "block";	
+			  //var upgrade = document.getElementById("levelUp");
+			  
+			//upgrade.style.display = "none";	
+			levelUp.style.display = "none";
+			if(upgradeAvailable){
+				//var upgrade = document.getElementById("levelUp");
+				//upgrade.style.display = "block";
+				levelUp.style.display = "none";
+				//var p = document.getElementById("upgradeCount").innerText = upgradeCount;
+				UpgradeCountNumber.innerText = upgradeCount;
+			}
+		}
+		else if (!hasName)
+		{
+			//var textBox = document.getElementById("playername");
+			//textBox.style.display = "none";
+			playerNameDiv.style.display = "block";
+		}
+		if(gameLeader) 
+		{
+			//var div = document.getElementById("gameLeader");
+			//div.style.display = "block";
+			gameLeaderDiv.style.display = "block";
+		} 
+		if(showingDisconnectInstructions){
+			disconnectIntructions.style.display = "block";
+		}*/
+		if(inGame)
+		{
+			gameLeader = false;
+			//var controller = document.getElementById("controller");			
+  			controller.style.display = "block";	
+			  //var upgrade = document.getElementById("levelUp");
+			  
+			//upgrade.style.display = "none";	
+			levelUp.style.display = "none";
+			if(upgradeAvailable){
+				//var upgrade = document.getElementById("levelUp");
+				//upgrade.style.display = "block";
+				levelUp.style.display = "block";
+				//var p = document.getElementById("upgradeCount").innerText = upgradeCount;
+				UpgradeCountNumber.innerText = upgradeCount;
+			}
+		}
+		else if (hasName)
+		{
+			//var textBox = document.getElementById("playername");
+			//textBox.style.display = "none";
+			playerNameDiv.style.display = "none";
+
+			if(gameLeader) 
+			{
+			//var div = document.getElementById("gameLeader");
+			//div.style.display = "block";
+			gameLeaderDiv.style.display = "block";
+			} 
+		}
+		else if(hasName == false)
+		{
+			playerNameDiv.style.display = "block";
+		}
+		if(showingDisconnectInstructions)
+		{
+			disconnectIntructions.style.display = "block";
+		}
+	}
+
+	function hideScreens(){
+			//var controller = document.getElementById("controller");			
+  			controller.style.display = "none";
+
+			//var div = document.getElementById("gameLeader");
+			//div.style.display = "none";	
+			gameLeaderDiv.style.display = "none";
+			//var textBox = document.getElementById("playername");
+			//textBox.style.display = "none";
+			playerNameDiv.style.display = "none";
+			disconnectIntructions.style.display = "none";
+	}
+
+	function startGame(){
+		websocket.send("startGame");
+	}
+
+	function shoot(){
+		websocket.send("shoot");
+	}
+
+	function AttackUpgradeChosen(){
+		websocket.send("upgradeChosen!Attack");
+		upgradeCount--;
+		upgradeCheck();
+		screenUpdate();
+	}
+
+	function HealthUpgradeChosen(){
+		websocket.send("upgradeChosen!Health");
+		upgradeCount--;
+		upgradeCheck();
+		screenUpdate();
+	}
+
+	function SpeedUpgradeChosen(){
+		websocket.send("upgradeChosen!Speed");
+		upgradeCount--;
+		upgradeCheck();
+		screenUpdate();
+	}
+	
+
+	function upgradeCheck(){
+		if(upgradeCount <= 0){
+			upgradeAvailable = false;
+		}
+	}
+
+   /* function onClickButton() {
+        var text = textarea.value;
+
+        text && doSend(text);
+        textarea.value = "";
+        textarea.focus();
+    }*/
+	
+	writeToScreen("Websocket address: "+wsUri);
+	
+	
+
+ 
+</script>
+</body>
+</html>
