@@ -1,0 +1,90 @@
+body
+{
+  display: flex;
+     align-items: center;
+      justify-content: space-between;
+  font-family: Courier, monospaced;
+  font-size: 16px;
+  font-weight: bold;
+    margin: 0;
+  height: 100vh;
+    padding: 0;
+  background-color:grey;
+  }	
+  .row
+{
+display: inline-flex;
+clear: both;
+}
+div {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  }
+#color-joystick {
+  width: 100%;
+    height: 100%;
+    align-items: center;
+    border-radius: 100%;
+}
+.button {
+background-color: rgba(129, 179, 226, 0.675); /* Green */
+border: none;
+color: white;
+padding: 20px;
+text-align: center;
+display: inline-block;
+font-size: 16px;
+margin: 4px 2px;	
+}
+
+.button:active{
+  color:darkgray;
+  background-color: darkmagenta;
+  transform: translateY(2px);
+}
+
+.buttonShoot{
+object-fit: cover; 
+width: 75%;
+height:auto;
+border-radius: 50%;
+}
+.buttonAbility{
+object-fit: cover; 
+width: 75%;
+height:auto;
+border-radius: 12px;
+}
+.columnLateral
+{
+  float: left;
+  width: 15%;
+  min-width: 300px;
+}
+.columnCentral
+{
+  float: left;
+  width: 70%;
+  min-width: 300px;
+}
+
+html{
+  height:100%;
+}
+
+div#controller{
+  display: none;
+}
+
+div#playername{
+  display: block;
+  margin: 30px;
+}
+
+div#gameLeader{
+  max-width: 50%; 
+  height: auto;
+  margin:30px;
+  display: none;
+}
